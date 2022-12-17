@@ -1,94 +1,66 @@
+from random import randrange
 import pygame as pg
-import time
-import random
-
+from time import sleep
+from car import Main_Car, Enemy
 
 GRAY=(200, 200, 200)
 BLACK=(0, 0, 0)
 GREEN=(0, 255, 0)
+FPS = 60
 
-pg.init()
-display = pg.display.set_mode((800, 800))
-pg.display.set_caption("Гонщик легальный")
-
-car_img = pg.image.load("images\car1.png")
-car_width = 50
-
-def policecar(police_startx, police_starty, police):
-    if police == 0:
-        police_come = pg.image.load("images\car2.png") 
-    if police == 1: 
-        police_come = pg.image.load("images\car3.png")
-    if police == 2:
-        police_come = pg.image.load("images\car1.png") 
-    display.blit(police_come, (police_startx, police_starty))
-
-def crash():
-    message_display("Game Over")
-
-def text_object(text, font):
-    text_surface=font.render(text, True, BLACK)
-    return text_surface,text_surface.get_rect()
-
-def message_display(text):
+def message_display(text, display, x=400, y=300):
     large_text = pg.font.Font("freesansbold.ttf", 80)
-    textsurf, textrect = text_object(text, large_text)
-    textrect. center = ((400), (300))
-    display.blit(textsurf,textrect)
+    text_surface = large_text.render(text, True, BLACK)
+    text_surf, text_rect = text_surface, text_surface.get_rect()
+    text_rect.center = (x, y)
+    display.blit(text_surf, text_rect)
     pg.display.update()
-    time.sleep(3)
-    loop()
 
-def car(x, y):
-    display.blit(car_img, (x, y))
+def main():
+    pg.init()
+    display = pg.display.set_mode((800, 800))
+    pg.display.set_caption("Гонщик легальный")
+    clock = pg.time.Clock()
+    all_sprites = pg.sprite.Group()
+    enemy_sprites = pg.sprite.Group()
+    main_car = Main_Car(display, 400, 700)
+    all_sprites.add(main_car)
+    enemy_cnt = 0
+    score = 0
 
-def loop():
-    x = 400
-    y = 540
-    x_change = 0 
-    y_change = 0
-    policecar_speed = 9
-    police = 0
-    police_start_x = random.randrange(100, (700-car_width))
-    police_start_y = -600
-    police_width = 50
-    police_height = 100
-    bumped = False
-    while not bumped:
+    while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
                 quit()
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_LEFT:
-                    x_change = -1
+                    main_car.speed -= max(score // 500, 2)
                 if event.key == pg.K_RIGHT:
-                    x_change = 1
-            if event.type == pg.KEYUP:
-                x_change=0
-        x += x_change
+                    main_car.speed += max(score // 500, 2)
+        clock.tick(FPS)
+        main_car.move()
+        enemy_cnt = len(enemy_sprites)
+
+        while enemy_cnt < max(score // 750, 2):
+            enemy = Enemy(display, randrange(1, max(score // 500, 2)))
+            enemy_sprites.add(enemy)
+            all_sprites.add(enemy)
+            enemy_cnt += 1
 
         display.fill(GREEN)
         pg.draw.rect(display, GRAY, (100, 0, 600, 800))
-
-        police_start_y -= (policecar_speed / 1.2)
-        policecar(police_start_x, police_start_y, police)
-        police_start_y += policecar_speed
-        car(x, y)
-        if x < 100 or x > 700-car_width:
-            crash()
-
-        if police_start_y > 600:     
-            police_start_y = 0 - police_height 
-            police_start_x = random.randrange(130, 700)
-            police = random.randrange(0,2)
-
-        if y < police_start_y + police_height:
-            if x > police_start_x and x < police_start_x + police_width \
-                or x + car_width > police_start_x and x + car_width < police_start_x + police_width:
-                crash()
+        all_sprites.update()
+        message_display('Счёт = ' + str(score) + "км", display, 400, 100)
+        if (main_car.bumped()) or (pg.sprite.spritecollide(main_car, enemy_sprites, False)):
+            message_display("GAME OVER", display)
+            sleep(2)
+            main()
 
         pg.display.update()
-loop()
-pg.quit() 
-quit()
+        score += 1
+
+if __name__ == '__main__':
+    main()
+    pg.quit()
+    quit()
